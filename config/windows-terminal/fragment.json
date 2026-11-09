@@ -1,0 +1,67 @@
+{
+  "profiles": [
+    {
+      "name": "SOC // PowerShell 7",
+      "guid": "{5d3f2c10-8a4e-4b1c-9f6a-0b7e1c2d3a41}",
+      "commandline": "pwsh.exe -NoLogo",
+      "startingDirectory": "%USERPROFILE%",
+      "colorScheme": "SOC Matrix",
+      "font": { "face": "JetBrainsMono Nerd Font, Cascadia Code", "size": 11 },
+      "useAcrylic": true,
+      "opacity": 80,
+      "padding": "12",
+      "cursorShape": "bar",
+      "bellStyle": "none"
+    },
+    {
+      "name": "SOC // Windows PowerShell",
+      "guid": "{a7c1e4d2-3b6f-4e08-8d95-1f2a6b9c0e72}",
+      "commandline": "powershell.exe -NoLogo",
+      "startingDirectory": "%USERPROFILE%",
+      "colorScheme": "SOC Matrix",
+      "font": { "face": "JetBrainsMono Nerd Font, Cascadia Code", "size": 11 },
+      "useAcrylic": true,
+      "opacity": 80,
+      "padding": "12",
+      "cursorShape": "bar",
+      "bellStyle": "none"
+    },
+    {
+      "name": "SOC // Debian",
+      "guid": "{e2b9f6a1-7c3d-4a85-b1e0-4d8c5f3a9b16}",
+      "commandline": "wsl.exe -d Debian --cd ~",
+      "colorScheme": "SOC Matrix",
+      "font": { "face": "JetBrainsMono Nerd Font, Cascadia Code", "size": 11 },
+      "useAcrylic": true,
+      "opacity": 80,
+      "padding": "12",
+      "cursorShape": "bar",
+      "bellStyle": "none"
+    }
+  ],
+  "schemes": [
+    {
+      "name": "SOC Matrix",
+      "background": "#0B0F14",
+      "foreground": "#C5D1DE",
+      "cursorColor": "#00FF9C",
+      "selectionBackground": "#1B3A33",
+      "black": "#0B0F14",
+      "red": "#FF5370",
+      "green": "#00FF9C",
+      "yellow": "#FFB000",
+      "blue": "#4FC3F7",
+      "purple": "#B388FF",
+      "cyan": "#00E5FF",
+      "white": "#C5D1DE",
+      "brightBlack": "#4A5A6A",
+      "brightRed": "#FF7A90",
+      "brightGreen": "#5CFFC0",
+      "brightYellow": "#FFCB4D",
+      "brightBlue": "#82D8FF",
+      "brightPurple": "#CDB5FF",
+      "brightCyan": "#6CF0FF",
+      "brightWhite": "#FFFFFF"
+    }
+  ]
+}

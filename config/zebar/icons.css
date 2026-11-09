@@ -1,0 +1,26 @@
+/*
+ * Nerd Font glyph subset, rendered with the LOCALLY installed "JetBrainsMono Nerd Font" (no web font, no CDN).
+ * Codepoints come from the official Nerd Fonts glyph table (nerdfonts.com, v3.5.1): nf-<set>-<name>.
+ */
+.nf { font-family: 'JetBrainsMono Nerd Font', 'JetBrainsMono NF', monospace; font-style: normal; }
+.i-windows::before      { content: "\f17a"; }   /* nf-fa-windows */
+.i-cpu::before          { content: "\f4bc"; }   /* nf-oct-cpu */
+.i-memory::before       { content: "\f035b"; }  /* nf-md-memory */
+.i-bat0::before         { content: "\f244"; }   /* nf-fa-battery_0 */
+.i-bat1::before         { content: "\f243"; }
+.i-bat2::before         { content: "\f242"; }
+.i-bat3::before         { content: "\f241"; }
+.i-bat4::before         { content: "\f240"; }
+.i-plug::before         { content: "\f06a5"; }  /* nf-md-power_plug */
+.i-swap-h::before       { content: "\f04e1"; }  /* nf-md-swap_horizontal */
+.i-swap-v::before       { content: "\f04e2"; }  /* nf-md-swap_vertical */
+.i-ethernet::before     { content: "\f0201"; }  /* nf-md-ethernet_cable */
+.i-wifi4::before        { content: "\f0928"; }  /* nf-md-wifi_strength_4 */
+.i-wifi3::before        { content: "\f0925"; }
+.i-wifi2::before        { content: "\f0922"; }
+.i-wifi1::before        { content: "\f091f"; }
+.i-wifi0::before        { content: "\f092f"; }  /* nf-md-wifi_strength_outline */
+.i-wifi-off::before     { content: "\f092e"; }  /* nf-md-wifi_strength_off_outline */
+.i-vpn::before          { content: "\f0ccc"; }  /* nf-md-shield_lock_outline */
+.i-clock::before        { content: "\f0150"; }  /* nf-md-clock_outline */
+.i-pause::before        { content: "\f03e6"; }  /* nf-md-pause_circle_outline */

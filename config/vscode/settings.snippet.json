@@ -1,0 +1,23 @@
+{
+  "workbench.colorTheme": "Default Dark Modern",
+  "editor.fontFamily": "'JetBrainsMono Nerd Font', 'Cascadia Code', Consolas, monospace",
+  "editor.fontLigatures": true,
+  "editor.fontSize": 14,
+  "terminal.integrated.fontFamily": "'JetBrainsMono Nerd Font', 'Cascadia Code'",
+  "editor.minimap.enabled": false,
+  "workbench.colorCustomizations": {
+    "editor.background": "#0b0f14",
+    "sideBar.background": "#080b0f",
+    "activityBar.background": "#080b0f",
+    "activityBar.foreground": "#00ff9c",
+    "titleBar.activeBackground": "#080b0f",
+    "statusBar.background": "#080b0f",
+    "statusBar.foreground": "#00ff9c",
+    "panel.background": "#0b0f14",
+    "terminal.background": "#0b0f14",
+    "tab.activeBorderTop": "#00ff9c",
+    "editorCursor.foreground": "#00ff9c",
+    "focusBorder": "#00ff9c",
+    "list.activeSelectionBackground": "#12332b"
+  }
+}
