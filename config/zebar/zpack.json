@@ -1,11 +1,11 @@
 {
-  "$schema": "https://github.com/glzr-io/zebar/raw/v3.0.0/resources/zpack-schema.json",
+  "$schema": "https://github.com/glzr-io/zebar/raw/v3.3.1/resources/zpack-schema.json",
   "name": "windows-geek-theme",
-  "version": "1.0.0",
-  "description": "Floating SOC-style top bar: workspaces, clock, tiling direction, network, CPU, RAM, battery.",
-  "tags": ["topbar"],
+  "version": "2.0.0",
+  "description": "SOC-style desktop: floating top bar (workspaces, focused window, clock, network, CPU/RAM sparklines, battery) and an animated network HUD behind the windows.",
+  "tags": ["topbar", "desktop"],
   "previewImages": [],
-  "repositoryUrl": "",
+  "repositoryUrl": "https://github.com/Windyam-Juste-Yannel-BELEMSIGRI/windows-geek-theme",
   "widgets": [
     {
       "name": "bar",
@@ -15,7 +15,7 @@
       "focused": false,
       "resizable": false,
       "transparent": true,
-      "includeFiles": ["*.html", "*.css"],
+      "includeFiles": ["*.html", "*.css", "*.js", "vendor/*"],
       "caching": { "defaultDuration": 604800, "rules": [] },
       "privileges": { "shellCommands": [] },
       "presets": [
@@ -26,6 +26,30 @@
           "offsetY": "6px",
           "width": "98%",
           "height": "36px",
+          "monitorSelection": { "type": "all" },
+          "dockToEdge": { "enabled": false, "edge": null, "windowMargin": "0px" }
+        }
+      ]
+    },
+    {
+      "name": "hud",
+      "htmlPath": "./hud.html",
+      "zOrder": "bottom_most",
+      "shownInTaskbar": false,
+      "focused": false,
+      "resizable": false,
+      "transparent": true,
+      "includeFiles": ["*.html", "*.css", "*.js", "vendor/*"],
+      "caching": { "defaultDuration": 604800, "rules": [] },
+      "privileges": { "shellCommands": [] },
+      "presets": [
+        {
+          "name": "default",
+          "anchor": "center",
+          "offsetX": "0px",
+          "offsetY": "0px",
+          "width": "100%",
+          "height": "100%",
           "monitorSelection": { "type": "all" },
           "dockToEdge": { "enabled": false, "edge": null, "windowMargin": "0px" }
         }

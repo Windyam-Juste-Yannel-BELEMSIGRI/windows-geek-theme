@@ -155,6 +155,72 @@ function Install-WingetPackage($Id, $Name, $Source = $null) {
     else { Write-Warn "$Name ($Id) failed with exit code $LASTEXITCODE - continuing" }
 }
 
+# ---------- logon tasks ----------
+# A Task Scheduler "at logon" task starts a few seconds after sign-in. Entries of the HKCU\...\Run key are started by
+# Explorer only once the shell is idle, one after the other: on this kind of machine that is 40+ seconds later.
+# The task runs as the current user, NOT elevated, with normal priority (tasks default to low priority).
+function Get-GeekTaskPath { return '\windows-geek-theme\' }
+function Register-GeekLogonTask($Name, $Exe, $Arguments = $null, $DelaySeconds = 2) {
+    if (Test-DryRun) { Write-Info "[dry-run] logon task $(Get-GeekTaskPath)$Name -> $Exe"; return $true }
+    try {
+        $user = [Security.Principal.WindowsIdentity]::GetCurrent().Name
+        $actArgs = @{ Execute = $Exe }; if ($Arguments) { $actArgs.Argument = $Arguments }
+        $action = New-ScheduledTaskAction @actArgs
+        $trigger = New-ScheduledTaskTrigger -AtLogOn -User $user
+        $trigger.Delay = "PT${DelaySeconds}S"
+        $principal = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Limited
+        $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -Priority 4 `
+            -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew
+        Register-ScheduledTask -TaskPath (Get-GeekTaskPath) -TaskName $Name -Action $action -Trigger $trigger `
+            -Principal $principal -Settings $settings -Force -ErrorAction Stop | Out-Null
+        $j = Get-Journal
+        if (@($j.tasks | Where-Object { $_ -eq $Name }).Count -eq 0) { Add-JournalEntry 'tasks' $Name }
+        return $true
+    } catch {
+        Write-Warn "Could not register logon task '$Name': $($_.Exception.Message)"
+        return $false
+    }
+}
+function Unregister-GeekLogonTask($Name) {
+    try {
+        Unregister-ScheduledTask -TaskPath (Get-GeekTaskPath) -TaskName $Name -Confirm:$false -ErrorAction Stop
+        # drop our (now empty) task folder; ignored if something else is still in it
+        $svc = New-Object -ComObject Schedule.Service; $svc.Connect()
+        try { $svc.GetFolder('\').DeleteFolder((Get-GeekTaskPath).Trim('\'), 0) } catch { }
+        return $true
+    } catch { Write-Warn "Could not remove logon task '$Name': $($_.Exception.Message)"; return $false }
+}
+function Start-GeekLogonTask($Name) { Start-ScheduledTask -TaskPath (Get-GeekTaskPath) -TaskName $Name -ErrorAction Stop }
+
+# Stop GlazeWM cleanly: "wm-exit" lets it un-hide the windows of other workspaces, reset opacity and close Zebar.
+# Killing it is only the fallback (its watcher process then restores the windows).
+function Stop-GeekWm {
+    if (-not (Get-Process glazewm -ErrorAction Ignore)) { Get-Process zebar -ErrorAction Ignore | Stop-Process -Force; return }
+    $cli = Join-Path $env:ProgramFiles 'glzr.io\GlazeWM\cli\glazewm.exe'
+    if (Test-Path $cli) { & $cli command wm-exit 2>&1 | Out-Null }
+    $deadline = (Get-Date).AddSeconds(5)
+    while ((Get-Date) -lt $deadline -and (Get-Process glazewm -ErrorAction Ignore)) { Start-Sleep -Milliseconds 200 }
+    Get-Process glazewm -ErrorAction Ignore | Stop-Process -Force
+    Start-Sleep -Milliseconds 600
+    Get-Process zebar -ErrorAction Ignore | Stop-Process -Force
+}
+
+# ---------- downloads ----------
+# Download a file and keep it only if its SHA-256 matches the pinned value.
+function Get-VerifiedDownload($Url, $Sha256, $Destination) {
+    $tmp = Join-Path ([IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString('N') + '.tmp')
+    try {
+        Invoke-WebRequest -Uri $Url -OutFile $tmp -UseBasicParsing -ErrorAction Stop
+        $hash = (Get-FileHash $tmp -Algorithm SHA256).Hash
+        if ($hash -ne $Sha256) { Write-Warn "hash mismatch for $Url (got $hash) - file discarded"; return $false }
+        Register-File $Destination
+        New-Item -ItemType Directory -Force -Path (Split-Path $Destination) | Out-Null
+        Move-Item $tmp $Destination -Force
+        return $true
+    } catch { Write-Warn "download failed for $Url : $($_.Exception.Message)"; return $false }
+    finally { if (Test-Path $tmp) { Remove-Item $tmp -Force } }
+}
+
 # ---------- native helpers ----------
 if (-not ('GeekNative' -as [type])) {
     Add-Type @'

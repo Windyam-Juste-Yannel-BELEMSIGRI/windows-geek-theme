@@ -1,0 +1,79 @@
+/* Shared design tokens for the bar and the desktop HUD (same palette as the terminal scheme "SOC Matrix"). */
+:root {
+  --bg: #0b0f14;
+  --surface: 18, 24, 33;          /* rgb triplet, used with an alpha */
+  --border: #1e2632;
+  --fg: #c5d1de;
+  --dim: #5c6b7a;
+  --accent: #00ff9c;              /* data / healthy */
+  --cyan: #00e5ff;                /* network */
+  --amber: #ffb000;               /* warning */
+  --red: #ff5370;                 /* critical */
+  --purple: #b388ff;
+  --mono: 'JetBrainsMono Nerd Font', 'JetBrainsMono NF', 'Cascadia Code', monospace;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  color: var(--fg);
+  font-family: var(--mono);
+  font-size: 12px;
+  user-select: none;
+  cursor: default;
+}
+
+/* Blinking block cursor and "alive" dot, as on the portfolio. */
+.cursor {
+  display: inline-block;
+  width: 0.55em;
+  height: 1.05em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background: var(--accent);
+  animation: blink 1.1s step-end infinite;
+}
+.pulse {
+  position: relative;
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  color: var(--accent);
+}
+/* The ring is a transform/opacity animation (compositor only) stepped at ~12 fps: an always-on ornament must not
+   repaint at the display refresh rate. */
+.pulse::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pulse 2s steps(24) infinite;
+}
+.pulse.warn { color: var(--amber); }
+.pulse.crit { color: var(--red); }
+
+/* Staggered entrance: an element with .reveal fades up once .ready is set on <body>. */
+.reveal { opacity: 0; transform: translateY(6px); }
+.ready .reveal {
+  opacity: 1;
+  transform: none;
+  transition: opacity 0.6s var(--ease), transform 0.6s var(--ease);
+  transition-delay: var(--d, 0ms);
+}
+
+@keyframes blink { 50% { opacity: 0; } }
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 0.7; }
+  70%, 100% { transform: scale(3); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cursor, .pulse::after { animation: none; }
+  .reveal { opacity: 1; transform: none; }
+}

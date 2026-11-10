@@ -37,7 +37,10 @@ if ($Host.Name -eq 'ConsoleHost') {
     }
 
     # --- icons, prompt, smart cd ---
-    if (Get-Module -ListAvailable -Name Terminal-Icons) { Import-Module Terminal-Icons -ErrorAction SilentlyContinue }
+    # Terminal-Icons is slow to load: deferred to the first idle moment so the prompt appears immediately
+    if (Get-Module -ListAvailable -Name Terminal-Icons) {
+        $null = Register-EngineEvent -SourceIdentifier PowerShell.OnIdle -MaxTriggerCount 1 -Action { Import-Module Terminal-Icons -Global -ErrorAction SilentlyContinue }
+    }
     $omp = Join-Path $HOME '.config\ohmyposh\soc-matrix.omp.json'
     if ((Get-Command oh-my-posh -ErrorAction SilentlyContinue) -and (Test-Path $omp)) {
         oh-my-posh init pwsh --config $omp | Invoke-Expression

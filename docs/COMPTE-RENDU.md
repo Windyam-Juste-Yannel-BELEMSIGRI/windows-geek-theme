@@ -75,11 +75,30 @@ Le test de `win+d` avec frappes simulées ouvre le lanceur en ~1 s sans menu Dé
 
 - **Chrome qui « tremble »** : mesure à chaud, 2 changements de taille en 40 ms (taille mémorisée de Chrome, puis tiling). Comportement attendu d'un tiling WM ; un démarrage à froid avec plusieurs fenêtres restaurées peut en produire plusieurs.
 
+## 5f. Intervention du 2026-11-10 : verre, animation, démarrage
+
+| Demande | Ce qui a été fait | Vérification |
+|---|---|---|
+| Fenêtres translucides / glass | Opacité native via GlazeWM : 93 % (active), 86 % (autres). `alt+shift+o` / `alt+shift+g` pour la fenêtre active | Alpha lu sur la fenêtre : 237/255. Capture : le fond et le HUD se voient à travers |
+| Flou généralisé | **Non fait, volontairement** : impossible sans injection dans DWM ou dans chaque processus. Seules les apps qui le gèrent elles-mêmes sont floutées (Terminal en acrylique) | — |
+| Animation du portfolio | Graphe réseau (nœuds, liens, paquets) porté depuis le script du hero : widget `hud` sous les fenêtres + bandeau dans la barre. Carte `status.json` en direct, texte tapé à la machine, point « pulse », curseur clignotant | Captures sur workspace vide et occupé ; deux images successives diffèrent |
+| Design de la barre | Logo `~/yannel▌`, fenêtre active, débits réseau, sparklines CPU/RAM, apparition échelonnée, rendu sans reconstruction du DOM | Capture en pleine résolution |
+| Lenteur au démarrage | Cause mesurée : GlazeWM lancé par la clé `Run` **43 s** après Explorer (22:29:57 → 22:30:40). Remplacé par une tâche planifiée à l'ouverture de session (+2 s). Bibliothèque Zebar servie en local au lieu d'`esm.sh` | Tâche exécutée à la main : code 0, GlazeWM et Zebar non élevés. **Le gain réel reste à constater au prochain redémarrage** |
+
+Problèmes rencontrés :
+
+1. **Erreur 740 dans la tâche planifiée** : `glazewm.exe` est un binaire `uiAccess`, que `CreateProcess` refuse de lancer. Passage par `ShellExec_RunDLL`.
+2. **Coût de la première version de l'animation** : 87 % d'un cœur (boucle à la fréquence de l'écran, `box-shadow` animé, canevas en pixels physiques). Après correction : 18 % d'un cœur, soit 0,6 % de la machine.
+3. **Variable `$script:` vide dans les étapes** : les étapes s'exécutent dans une portée enfant de `install.ps1` ; remplacée par une fonction.
+4. Le script `boot-priority.ps1` (baisse de priorité des apps lourdes pendant 180 s) est retiré : il démarrait lui aussi par la clé `Run`, donc après les applications qu'il devait ralentir. Les priorités de lancement restent posées par `set-geek-admin-priority.ps1`.
+5. Lancer GlazeWM une seconde fois affiche une boîte « Fatal error » : il ne faut donc qu'un seul mécanisme de démarrage (la tâche), pas de doublon dans la clé `Run`.
+
 ## 6. Ce qu'il te reste à faire
 
 1. **Se déconnecter/reconnecter** : couleur d'accent et alignement de la barre des tâches.
 2. **Écran de verrouillage** : `Win+L` pour vérifier l'image ; sur l'écran de connexion, seule l'image est personnalisable (limite assumée).
 3. **Widgets natifs** (optionnel) : à désactiver à la main dans Paramètres > Personnalisation > Barre des tâches.
+4. **Redémarrer une fois** pour constater le nouveau temps de lancement. Si la barre n'apparaît pas : lancer GlazeWM depuis le menu Démarrer, puis regarder l'historique de la tâche `\windows-geek-theme\GlazeWM` dans le Planificateur de tâches.
 
 ## 7. Raccourcis GlazeWM à connaître
 

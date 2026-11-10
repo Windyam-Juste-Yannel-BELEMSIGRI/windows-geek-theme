@@ -47,15 +47,17 @@ windows-geek-theme/
 │   ├── 07-wsl               Debian + prompt identique                                  CONFIRMATION
 │   ├── 08-wallpaper         Fond généré 3840x2160, appliqué                            HKCU
 │   ├── 09-lockscreen        Écran de verrouillage/connexion + politique Widgets        HKLM, CONFIRMATION
-│   ├── 10-tiling-bar        Tiling GlazeWM + barre Zebar + barre native auto-masquée   CONFIRMATION
+│   ├── 10-tiling-bar        Tiling GlazeWM (verre) + barre et HUD animé Zebar + démarrage rapide  CONFIRMATION
 │   ├── 11-launcher          Lanceur wofi-like (win+d) : fzf dans un Terminal flottant   fichiers utilisateur
 │   └── 12-single-desktop    Un seul bureau virtuel (GlazeWM utilise ses workspaces)     CONFIRMATION
 ├── config/
 │   ├── oh-my-posh/soc-matrix.omp.json    Prompt : user@host, chemin, git, venv Python, code retour, durée, heure
 │   ├── powershell/profile.block.ps1      PSReadLine, Terminal-Icons, zoxide, fzf (Ctrl+R), eza, btop
 │   ├── windows-terminal/fragment.json    Schéma « SOC Matrix » + 3 profils (opacité 80 %, acrylique)
-│   ├── glazewm/config.yaml               Tiling : gaps 12 px, bordure verte, raccourcis ALT, 9 workspaces
-│   ├── zebar/                            Barre du haut : zpack.json, bar.html, styles.css, icons.css (Nerd Font locale)
+│   ├── glazewm/config.yaml               Tiling : gaps 12 px, bordure verte, fenêtres translucides, raccourcis ALT, 9 workspaces
+│   ├── zebar/                            Pack de widgets : barre du haut (bar.html, styles.css) et HUD de bureau (hud.html, hud.css),
+│   │                                     animation réseau (net-canvas.js), jetons de design (theme.css), icônes Nerd Font (icons.css)
+│   ├── boot-priority/                    set-geek-admin-priority.ps1 : priorités de lancement de GlazeWM/Zebar (admin, réversible)
 │   ├── launcher/launcher.ps1             Lanceur d'applications / commandes / recherche web (fzf)
 │   ├── vscode/settings.snippet.json      Référence si la fusion automatique est impossible
 │   └── wsl/setup-root.sh, setup-user.sh  Paquets apt (root) puis oh-my-posh + bloc ~/.bashrc (utilisateur)
@@ -89,12 +91,38 @@ windows-geek-theme/
 ## Tiling et barre du haut (étape 10)
 
 - **GlazeWM** (GPL-3.0) gère le tiling : `inner_gap` 12 px entre fenêtres, `outer_gap` 12 px (54 px en haut pour la barre) entre fenêtres et bords. Une fenêtre en **plein écran** (`alt+f`, F11, vidéo, jeu) ignore les marges. Bordure verte `#00ff9c` sur la fenêtre active.
-- **Zebar** affiche la barre flottante en haut (arrondie, translucide, 36 px) : workspaces cliquables, horloge, sens du tiling, réseau, RAM, CPU, batterie. Seuils ambre à 80 %, rouge à 90 %. Les icônes sont des glyphes Nerd Font tirés de ta police installée (table officielle Nerd Fonts), sans webfont ni CDN.
+- **Zebar** affiche la barre flottante en haut (arrondie, translucide, 36 px) : logo `~/yannel▌`, workspaces cliquables, fenêtre active (processus + titre), horloge, réseau avec débits ↓/↑, CPU et RAM avec mini-courbes (sparklines), batterie, sens du tiling. Seuils ambre à 80 %, rouge à 90 %. Les icônes sont des glyphes Nerd Font tirés de ta police installée (table officielle Nerd Fonts), sans webfont ni CDN.
 - **Barre des tâches native** : Windows 11 ne permet plus de la placer en haut, et on ne peut pas réduire son padding sans outil qui s'injecte dans `explorer.exe` (Windhawk, ExplorerPatcher), exclu ici. Elle est **masquée automatiquement** via l'API officielle (`SHAppBarMessage`), et la barre Zebar la remplace. Un survol du bas de l'écran la fait réapparaître.
-- GlazeWM est ajouté aux éléments de démarrage de la session (`HKCU\...\Run`).
-- **Raccourcis** (ALT, jamais la touche Windows) : `alt+h/j/k/l` focus, `alt+shift+h/j/k/l` déplacer, `alt+1..9` workspace, `alt+shift+1..9` envoyer, `alt+f` plein écran, `alt+shift+space` flottant, `alt+v` sens du tiling, `alt+r` mode redimensionnement, `alt+enter` Windows Terminal, `alt+shift+q` fermer, `win+d`/`alt+d` lanceur.
+- **Raccourcis** (ALT, jamais la touche Windows) : `alt+h/j/k/l` focus, `alt+shift+h/j/k/l` déplacer, `alt+1..9` workspace, `alt+shift+1..9` envoyer, `alt+f` plein écran, `alt+shift+space` flottant, `alt+v` sens du tiling, `alt+r` mode redimensionnement, `alt+enter` Windows Terminal, `alt+shift+q` fermer, `win+d`/`alt+d` lanceur, `alt+shift+o`/`alt+shift+g` fenêtre opaque / verre.
 - **Issues de secours** : `alt+shift+p` met tout en pause, `alt+shift+e` quitte GlazeWM.
-- Dépendance réseau résiduelle : le widget importe la bibliothèque cliente `zebar@3.0` depuis `esm.sh` (comme le widget officiel), mise en cache 7 jours. Rien d'autre n'est chargé depuis Internet.
+- **Aucune dépendance réseau au démarrage** : la bibliothèque cliente `zebar@3.0.3` est téléchargée une fois par l'étape 10 dans `~/.glzr/zebar/windows-geek-theme/vendor/`, avec vérification SHA-256 de la version épinglée. Elle est sous GPL-3.0, donc téléchargée à l'installation plutôt que copiée dans ce dépôt MIT. Si la copie locale manque, les widgets retombent sur `esm.sh`.
+
+## Verre, animation et démarrage rapide
+
+### Fenêtres translucides
+
+GlazeWM applique l'opacité native de Windows (fenêtres « layered ») : **93 %** pour la fenêtre active, **86 %** pour les autres. Le fond d'écran et l'animation passent à travers, sans aucun outil d'injection.
+
+- `alt+shift+o` rend la fenêtre active opaque (vidéo, retouche d'image). GlazeWM réapplique l'opacité à chaque changement de focus : l'effet dure tant que la fenêtre garde le focus. `alt+shift+g` remet le verre.
+- Pour changer le dosage ou tout couper : `window_effects.*.transparency` dans `config/glazewm/config.yaml`, puis `alt+shift+r`.
+- **Flou « glass »** : Windows ne floute que les surfaces des applications qui le demandent elles-mêmes (Windows Terminal en acrylique ici, Explorateur et Paramètres en Mica). Flouter l'arrière-plan de *toutes* les fenêtres impose d'injecter du code dans DWM ou dans chaque processus (DWMBlurGlass, Mica For Everyone) : exclu, pour la même raison que Windhawk.
+
+### HUD de bureau animé
+
+Un second widget Zebar (`hud`), placé **sous toutes les fenêtres**, dessine par-dessus le fond d'écran l'animation du portfolio : un graphe réseau dont les nœuds dérivent, se relient à leurs voisins et échangent des « paquets » cyan. En bas à droite, une carte `status.json` reprend la fenêtre `profile.json` du portfolio, avec des valeurs réelles (hôte, uptime, CPU, RAM, débit réseau) et le texte tapé à la machine. La même animation, en bandeau discret, vit derrière le contenu de la barre.
+
+- Coût mesuré : environ **0,6 % du CPU** de la machine pour les deux widgets (20 images/s pour le bureau, 15 pour la barre, tracé à la résolution logique).
+- Sur batterie, la cadence est divisée par deux ; derrière une fenêtre en plein écran, l'animation du bureau s'arrête.
+- Réglages en tête de `hud.html` et `bar.html` (`WORDS`, `LOGO`, `FPS_PLUGGED`, `FPS_BATTERY`). Pour s'en passer : retirer la ligne `hud` de `~/.glzr/zebar/settings.json`.
+- Le widget couvre le bureau : les icônes du bureau (masquées dans ce setup) ne seraient plus cliquables.
+
+### Démarrage à l'ouverture de session
+
+GlazeWM est lancé par une **tâche planifiée** `\windows-geek-theme\GlazeWM` (à l'ouverture de session, utilisateur courant, non élevée, priorité normale, autorisée sur batterie) au lieu de la clé `HKCU\...\Run`. Explorer ne lance les entrées `Run` qu'une fois le shell au repos, l'une après l'autre : mesuré ici, GlazeWM démarrait **43 s** après le bureau. La tâche part 2 s après l'ouverture de session.
+
+- `glazewm.exe` est un binaire `uiAccess` : le Planificateur ne peut pas le créer directement (erreur 740). La tâche passe donc par `rundll32.exe shell32.dll,ShellExec_RunDLL "<glazewm.exe>"`, le point d'entrée documenté de `ShellExecute`.
+- En session administrateur, l'étape 10 applique aussi `config/boot-priority/set-geek-admin-priority.ps1` : priorité CPU/E-S haute pour `glazewm.exe`, supérieure à la normale pour `zebar.exe` (clé documentée `PerfOptions`, sans valeur `Debugger`). Annulation : `-Revert`, ou `revert.ps1`.
+- Si la tâche ne peut pas être créée, l'étape retombe sur la clé `Run`.
 
 ## Bureaux virtuels et apps plein écran (étape 12 + règle `set-tiling`)
 
@@ -124,12 +152,12 @@ windows-geek-theme/
 
 ## Limites assumées (non contournées volontairement)
 
-- **Transparence Mica/Acrylic** : Windows l'applique à ses propres surfaces (Paramètres, Explorateur, Terminal). Les fenêtres Win32 classiques ne peuvent pas être rendues translucides sans outil tiers. Aucun n'est installé : Mica For Everyone injecte du code dans d'autres processus, TranslucentTB repose sur une API non documentée qui casse après certaines mises à jour.
+- **Flou Mica/Acrylic** : Windows l'applique à ses propres surfaces (Paramètres, Explorateur, Terminal). Les autres fenêtres sont rendues translucides par GlazeWM (opacité native), mais sans flou : le flou généralisé demande un outil qui injecte du code dans d'autres processus (Mica For Everyone, DWMBlurGlass), et TranslucentTB repose sur une API non documentée qui casse après certaines mises à jour. Aucun n'est installé.
 - **Écran de connexion** : seule l'image est personnalisable (via la stratégie). Sa couleur, son flou et sa police ne le sont pas par une méthode supportée.
 - **Widgets** : Windows 11 protège la valeur `TaskbarDa` (écriture refusée même en admin). Le script tente ensuite la stratégie `AllowNewsAndInterests=0` (étape 09, HKLM), qui peut aussi être protégée selon la machine : dans ce cas le script le signale, ne force rien, et le bouton se désactive dans Paramètres > Personnalisation > Barre des tâches. Avec la barre native masquée, c'est sans conséquence visuelle.
 - **Sysinternals Suite** : le manifeste winget échoue régulièrement à la vérification de hash (Microsoft met à jour le ZIP sur place). Le contrôle n'est jamais désactivé : le script installe la version du Microsoft Store (`9P7KNL5RWT25`).
 - **PowerShell 5.1** ne charge un profil que si sa politique d'exécution le permet (`Restricted` par défaut). Le projet ne la change pas ; PowerShell 7 (installé à l'étape 03) charge le profil sans réglage.
-- **Rainmeter** (fond animé CPU/RAM/réseau) volontairement non inclus : il reste une option à ajouter plus tard.
+- **Rainmeter / Lively Wallpaper** non installés : le fond animé est un widget Zebar, déjà présent pour la barre (aucun programme de plus au démarrage).
 - **Sécurité** : Defender, UAC, pare-feu et mots de passe ne sont jamais touchés.
 
 ## Prérequis
@@ -138,7 +166,7 @@ Windows 11 (testé sur Pro, build 26200), PowerShell 5.1+, `winget`, session adm
 
 ## Annulation
 
-1. `revert.ps1` : restaure chaque valeur de registre d'origine, retire les blocs de profil, restaure ou supprime les fichiers, annule la config du shell Debian, réapplique l'ancien fond.
+1. `revert.ps1` : arrête GlazeWM proprement, supprime la tâche planifiée et les priorités de lancement, restaure chaque valeur de registre d'origine, retire les blocs de profil, restaure ou supprime les fichiers, annule la config du shell Debian, réapplique l'ancien fond.
 2. Les paquets sont conservés par défaut (`-RemovePackages` pour les désinstaller). La distribution Debian n'est **jamais** supprimée automatiquement (`wsl --unregister Debian` détruit ses données).
 3. Filet de secours : le point de restauration `windows-geek-theme (before changes)` et les `.reg` d'origine dans `backup/reg/`.
 

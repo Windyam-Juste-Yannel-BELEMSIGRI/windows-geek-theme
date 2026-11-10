@@ -5,41 +5,139 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>geek-bar</title>
     <link rel="stylesheet" href="./icons.css" />
+    <link rel="stylesheet" href="./theme.css" />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <div id="root">
-      <div class="app">
-        <div class="left" id="left"></div>
-        <div class="center" id="center"></div>
-        <div class="right" id="right"></div>
+    <div class="app">
+      <canvas id="net" aria-hidden="true"></canvas>
+      <span class="scan" aria-hidden="true"></span>
+
+      <div class="left">
+        <span class="logo reveal"><span class="accent">~/</span><span id="logo-text"></span><span class="cursor"></span></span>
+        <div class="workspaces reveal" id="workspaces" style="--d: 80ms"></div>
+        <div class="window reveal" id="window" style="--d: 160ms"><span class="proc" id="win-proc"></span><span class="title" id="win-title"></span></div>
+      </div>
+
+      <div class="center reveal" style="--d: 240ms">
+        <span class="pulse" id="pulse"></span>
+        <span class="time" id="time"></span>
+        <span class="date" id="date"></span>
+      </div>
+
+      <div class="right reveal" style="--d: 320ms">
+        <div class="states" id="states"></div>
+        <div class="item net" id="net-item">
+          <i class="nf" id="net-icon"></i><span class="label" id="net-name"></span>
+          <span class="rate"><i class="nf i-down"></i><span id="net-down">0B</span></span>
+          <span class="rate"><i class="nf i-up"></i><span id="net-up">0B</span></span>
+        </div>
+        <div class="item cpu" id="cpu-item"><i class="nf i-cpu"></i><canvas class="spark" id="cpu-spark" width="88" height="28"></canvas><span class="value" id="cpu-value">--%</span></div>
+        <div class="item mem" id="mem-item"><i class="nf i-memory"></i><canvas class="spark" id="mem-spark" width="88" height="28"></canvas><span class="value" id="mem-value">--%</span></div>
+        <div class="item bat" id="bat-item" hidden><i class="nf" id="bat-icon"></i><span class="value" id="bat-value"></span></div>
+        <button class="btn" id="dir" title="tiling direction"><i class="nf i-swap-h" id="dir-icon"></i></button>
       </div>
     </div>
 
     <script type="module">
-      // Only runtime dependency: the Zebar client library (same import the official starter pack uses).
-      import * as zebar from 'https://esm.sh/zebar@3.0';
+      import zebar, { el, setText, formatRate, usageLevel } from './zebar-client.js';
+      import { startNetwork } from './net-canvas.js';
+
+      // ---- personal settings ----
+      const LOGO = 'yannel';
+      const HISTORY = 30;        // samples kept for the CPU / RAM sparklines
+      const FPS_PLUGGED = 15;    // frame rate of the network strip behind the bar
+      const FPS_BATTERY = 8;
+
+      const $ = id => document.getElementById(id);
+      const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+      setText($('logo-text'), LOGO);
 
       const providers = zebar.createProviderGroup({
         glazewm: { type: 'glazewm' },
-        cpu: { type: 'cpu' },
-        memory: { type: 'memory' },
-        network: { type: 'network' },
-        battery: { type: 'battery' },
+        cpu: { type: 'cpu', refreshInterval: 2000 },
+        memory: { type: 'memory', refreshInterval: 4000 },
+        network: { type: 'network', refreshInterval: 2000 },
+        battery: { type: 'battery', refreshInterval: 30000 },
       });
 
-      const $ = id => document.getElementById(id);
-      function el(tag, cls, text) {
-        const e = document.createElement(tag);
-        if (cls) e.className = cls;
-        if (text !== undefined) e.textContent = text;
-        return e;
+      // ---- background: the portfolio network animation, as a discreet strip behind the bar content ----
+      const network = startNetwork($('net'), {
+        maxNodes: 34, area: 1800, linkDist: 110, linkAlpha: 0.35, nodeAlpha: 0.5, maxPackets: 6, fps: FPS_PLUGGED,
+        nodeColor: css('--dim'), packetColor: css('--cyan'), hoverColor: css('--accent'),
+      });
+
+      // ---- sparklines ----
+      const history = { cpu: [], mem: [] };
+      function spark(canvas, values, color) {
+        const c = canvas.getContext('2d');
+        const W = canvas.width, H = canvas.height, pad = 3;
+        c.clearRect(0, 0, W, H);
+        if (values.length < 2) return;
+        const step = W / (HISTORY - 1);
+        const x0 = W - (values.length - 1) * step;
+        const y = v => H - pad - (Math.min(100, Math.max(0, v)) / 100) * (H - 2 * pad);
+        c.beginPath();
+        values.forEach((v, i) => (i ? c.lineTo(x0 + i * step, y(v)) : c.moveTo(x0, y(v))));
+        c.lineWidth = 2; c.lineJoin = 'round'; c.strokeStyle = color; c.globalAlpha = 0.95; c.stroke();
+        c.lineTo(W, H); c.lineTo(x0, H); c.closePath();
+        c.globalAlpha = 0.16; c.fillStyle = color; c.fill();
+        c.globalAlpha = 1;
       }
-      const icon = name => el('i', 'nf i-' + name);
-      function item(cls, iconName, text, level) {
-        const d = el('div', 'item ' + cls + (level ? ' ' + level : ''));
-        d.append(icon(iconName), el('span', '', text));
-        return d;
+      function gauge(key, usage) {
+        const h = history[key];
+        if (h.stamp === usage.stamp) return;      // provider did not refresh: no new sample
+        h.stamp = usage.stamp;
+        h.push(usage.value); if (h.length > HISTORY) h.shift();
+        const level = usageLevel(usage.value);
+        $(key + '-item').className = 'item ' + key + (level ? ' ' + level : '');
+        setText($(key + '-value'), String(Math.round(usage.value)).padStart(2, ' ') + '%');
+        spark($(key + '-spark'), h, css(level === 'crit' ? '--red' : level === 'warn' ? '--amber' : '--accent'));
+      }
+
+      // ---- renderers (each one only touches what changed) ----
+      const wsNodes = new Map();
+      function renderWorkspaces(g) {
+        const box = $('workspaces');
+        const names = g.currentWorkspaces.map(w => w.name);
+        for (const [name, node] of wsNodes) if (!names.includes(name)) { node.remove(); wsNodes.delete(name); }
+        g.currentWorkspaces.forEach((w, i) => {
+          let b = wsNodes.get(w.name);
+          if (!b) {
+            b = el('button', 'ws', w.displayName ?? w.name);
+            b.onclick = () => providers.outputMap.glazewm?.runCommand('focus --workspace ' + w.name);
+            wsNodes.set(w.name, b);
+          }
+          if (box.children[i] !== b) box.insertBefore(b, box.children[i] ?? null);
+          b.className = 'ws' + (w.hasFocus ? ' focused' : '') + (w.isDisplayed ? ' displayed' : '');
+        });
+      }
+
+      function renderWindow(g) {
+        const f = g.focusedContainer;
+        const isWin = f?.type === 'window';
+        $('window').classList.toggle('empty', !isWin);
+        setText($('win-proc'), isWin ? (f.processName ?? '').toLowerCase() : 'desktop');
+        setText($('win-title'), isWin ? f.title ?? '' : '');
+      }
+
+      function renderStates(g) {
+        const key = (g.isPaused ? 'P' : '') + g.bindingModes.map(m => m.name).join(',');
+        const box = $('states');
+        if (box.dataset.key === key) return;
+        box.dataset.key = key;
+        box.replaceChildren();
+        if (g.isPaused) {
+          const p = el('button', 'btn paused');
+          p.append(el('i', 'nf i-pause'), el('span', '', 'PAUSED'));
+          p.onclick = () => g.runCommand('wm-toggle-pause');
+          box.append(p);
+        }
+        for (const m of g.bindingModes) {
+          const b = el('button', 'btn mode', m.displayName ?? m.name);
+          b.onclick = () => g.runCommand('wm-disable-binding-mode --name ' + m.name);
+          box.append(b);
+        }
       }
 
       function networkIcon(net) {
@@ -48,80 +146,60 @@
         if (t === 'proprietary_virtual') return 'vpn';
         if (t === 'wifi') {
           const s = net.defaultGateway?.signalStrength ?? 0;
-          if (s >= 80) return 'wifi4';
-          if (s >= 65) return 'wifi3';
-          if (s >= 40) return 'wifi2';
-          if (s >= 25) return 'wifi1';
-          return 'wifi0';
+          return s >= 80 ? 'wifi4' : s >= 65 ? 'wifi3' : s >= 40 ? 'wifi2' : s >= 25 ? 'wifi1' : 'wifi0';
         }
         return 'wifi-off';
       }
-      const batteryIcon = p => (p > 90 ? 'bat4' : p > 70 ? 'bat3' : p > 40 ? 'bat2' : p > 20 ? 'bat1' : 'bat0');
-      const usageLevel = u => (u > 90 ? 'crit' : u > 80 ? 'warn' : '');
-
-      function renderLeft(out) {
-        const left = $('left');
-        left.replaceChildren(el('i', 'nf i-windows logo'));
-        if (!out.glazewm) return;
-        const ws = el('div', 'workspaces');
-        for (const w of out.glazewm.currentWorkspaces) {
-          const b = el('button', 'ws' + (w.hasFocus ? ' focused' : '') + (w.isDisplayed ? ' displayed' : ''), w.displayName ?? w.name);
-          b.onclick = () => out.glazewm.runCommand('focus --workspace ' + w.name);
-          ws.append(b);
-        }
-        left.append(ws);
+      function renderNetwork(net) {
+        const icon = networkIcon(net);
+        $('net-icon').className = 'nf i-' + icon;
+        $('net-item').classList.toggle('offline', icon === 'wifi-off');
+        setText($('net-name'), net.defaultGateway?.ssid ?? (icon === 'wifi-off' ? 'offline' : net.defaultInterface?.friendlyName ?? ''));
+        setText($('net-down'), formatRate(net.traffic?.received?.bytes));
+        setText($('net-up'), formatRate(net.traffic?.transmitted?.bytes));
       }
 
-      function renderRight(out) {
-        const right = $('right');
-        right.replaceChildren();
+      const batteryIcon = p => (p > 90 ? 'bat4' : p > 70 ? 'bat3' : p > 40 ? 'bat2' : p > 20 ? 'bat1' : 'bat0');
+      function renderBattery(b) {
+        const p = Math.round(b.chargePercent);
+        const level = !b.isCharging && p <= 20 ? (p <= 10 ? 'crit' : 'warn') : '';
+        $('bat-item').hidden = false;
+        $('bat-item').className = 'item bat' + (level ? ' ' + level : '');
+        $('bat-icon').className = 'nf i-' + (b.isCharging ? 'plug' : batteryIcon(p));
+        setText($('bat-value'), p + '%');
+        // On battery the animated strip costs GPU wake-ups for nothing: slow it down.
+        network.setFps(b.isCharging || b.state === 'full' ? FPS_PLUGGED : FPS_BATTERY);
+      }
+
+      const stamps = {};
+      const fresh = (key, obj) => { if (stamps[key] === obj) return false; stamps[key] = obj; return true; };
+
+      function render() {
+        const out = providers.outputMap;
         const g = out.glazewm;
-        if (g) {
-          if (g.isPaused) {
-            const p = el('button', 'btn paused');
-            p.append(icon('pause'), el('span', '', 'PAUSED'));
-            p.onclick = () => g.runCommand('wm-toggle-pause');
-            right.append(p);
-          }
-          for (const m of g.bindingModes) {
-            const b = el('button', 'btn mode', m.displayName ?? m.name);
-            b.onclick = () => g.runCommand('wm-disable-binding-mode --name ' + m.name);
-            right.append(b);
-          }
-          const dir = el('button', 'btn');
-          dir.append(icon(g.tilingDirection === 'horizontal' ? 'swap-h' : 'swap-v'));
-          dir.onclick = () => g.runCommand('toggle-tiling-direction');
-          right.append(dir);
+        if (g && fresh('glazewm', g)) {
+          renderWorkspaces(g); renderWindow(g); renderStates(g);
+          $('dir-icon').className = 'nf i-' + (g.tilingDirection === 'horizontal' ? 'swap-h' : 'swap-v');
+          $('pulse').className = 'pulse' + (g.isPaused ? ' crit' : '');
         }
-        if (out.network) right.append(item('net', networkIcon(out.network), out.network.defaultGateway?.ssid ?? ''));
-        if (out.memory) right.append(item('mem', 'memory', Math.round(out.memory.usage) + '%', usageLevel(out.memory.usage)));
-        if (out.cpu) right.append(item('cpu', 'cpu', Math.round(out.cpu.usage) + '%', usageLevel(out.cpu.usage)));
-        if (out.battery) {
-          const p = Math.round(out.battery.chargePercent);
-          right.append(item('bat', out.battery.isCharging ? 'plug' : batteryIcon(p), p + '%', !out.battery.isCharging && p <= 20 ? (p <= 10 ? 'crit' : 'warn') : ''));
-        }
+        if (out.network && fresh('network', out.network)) renderNetwork(out.network);
+        if (out.cpu) gauge('cpu', { value: out.cpu.usage, stamp: out.cpu });
+        if (out.memory) gauge('mem', { value: out.memory.usage, stamp: out.memory });
+        if (out.battery && fresh('battery', out.battery)) renderBattery(out.battery);
       }
 
       function renderClock() {
         const now = new Date();
-        const c = el('div', 'clock');
-        c.append(
-          icon('clock'),
-          el('span', '', ' ' + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })),
-          el('span', 'date', now.toLocaleDateString([], { weekday: 'short', day: '2-digit', month: 'short' })),
-        );
-        $('center').replaceChildren(c);
+        setText($('time'), now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+        setText($('date'), now.toLocaleDateString([], { weekday: 'short', day: '2-digit', month: 'short' }));
       }
 
-      function render() {
-        const out = providers.outputMap;
-        renderLeft(out);
-        renderRight(out);
-      }
+      $('dir').onclick = () => providers.outputMap.glazewm?.runCommand('toggle-tiling-direction');
       render();
       renderClock();
       providers.onOutput(render);
       setInterval(renderClock, 1000);
+      requestAnimationFrame(() => document.body.classList.add('ready'));
     </script>
   </body>
 </html>

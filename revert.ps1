@@ -19,7 +19,16 @@ Write-Info 'Alternative safety net: System Restore point "windows-geek-theme (be
 if (-not (Confirm-Action 'Revert all recorded changes?')) { return }
 
 # 0. stop the tiling WM + bar, give the native taskbar back
-if (-not (Test-DryRun)) { Get-Process glazewm, glazewm-watcher, zebar -ErrorAction Ignore | Stop-Process -Force }
+if (-not (Test-DryRun)) { Stop-GeekWm }
+foreach ($t in @($j.tasks | Where-Object { $_ })) {
+    if (Test-DryRun) { Write-Info "[dry-run] remove logon task $t"; continue }
+    if (Unregister-GeekLogonTask $t) { Write-Ok "logon task removed: $t" }
+}
+if (@($j.perfOptions | Where-Object { $_ }).Count -gt 0) {
+    if (Test-DryRun) { Write-Info '[dry-run] remove launch priorities (PerfOptions)' }
+    elseif (Test-Admin) { & (Join-Path $PSScriptRoot 'config\boot-priority\set-geek-admin-priority.ps1') -Revert | Out-Null; Write-Ok 'launch priorities removed' }
+    else { Write-Warn 'launch priorities kept (needs admin): run config\boot-priority\set-geek-admin-priority.ps1 -Revert elevated' }
+}
 foreach ($t in @($j.taskbarState | Where-Object { $_ })) {
     if (Test-DryRun) { Write-Info '[dry-run] restore native taskbar state'; continue }
     Set-TaskbarState ([int]$t.state); Write-Ok 'native taskbar state restored'
@@ -48,7 +57,7 @@ foreach ($f in $files) {
         elseif (Test-Path $f.path) { Remove-Item $f.path -Force; Write-Ok "deleted $($f.path)" }
     } catch { Write-Warn "could not restore $($f.path): $($_.Exception.Message)" }
 }
-foreach ($d in (Join-Path $env:LOCALAPPDATA 'Microsoft\Windows Terminal\Fragments\windows-geek-theme'), (Join-Path $env:USERPROFILE '.glzr\zebar\windows-geek-theme')) {
+foreach ($d in (Join-Path $env:LOCALAPPDATA 'Microsoft\Windows Terminal\Fragments\windows-geek-theme'), (Join-Path $env:USERPROFILE '.glzr\zebar\windows-geek-theme\vendor'), (Join-Path $env:USERPROFILE '.glzr\zebar\windows-geek-theme')) {
     if ((-not (Test-DryRun)) -and (Test-Path $d) -and -not (Get-ChildItem $d)) { Remove-Item $d -Force }
 }
 

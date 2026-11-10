@@ -24,3 +24,5 @@
 .i-vpn::before          { content: "\f0ccc"; }  /* nf-md-shield_lock_outline */
 .i-clock::before        { content: "\f0150"; }  /* nf-md-clock_outline */
 .i-pause::before        { content: "\f03e6"; }  /* nf-md-pause_circle_outline */
+.i-down::before         { content: "\f063"; }   /* nf-fa-arrow_down */
+.i-up::before           { content: "\f062"; }   /* nf-fa-arrow_up */

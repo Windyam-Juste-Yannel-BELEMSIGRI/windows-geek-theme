@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>geek-hud</title>
+    <link rel="stylesheet" href="./theme.css" />
+    <link rel="stylesheet" href="./hud.css" />
+  </head>
+  <body>
+    <!-- Desktop layer (below every window): the portfolio network animation over the wallpaper + a live status card. -->
+    <canvas id="net" aria-hidden="true"></canvas>
+
+    <div class="card reveal" style="--d: 300ms">
+      <div class="head"><span class="dots"><i></i><i></i><i></i></span><span>status.json</span><span class="pulse" id="pulse"></span></div>
+      <div class="body">
+        <p class="line"><span class="accent">$</span> whoami</p>
+        <p class="line typed"><span class="dim">&gt;</span> <span id="typed"></span><span class="cursor"></span></p>
+        <pre><span class="p">{</span>
+  <span class="k">"host"</span>: <span class="s" id="host">"…"</span>,
+  <span class="k">"uptime"</span>: <span class="s" id="uptime">"…"</span>,
+  <span class="k">"cpu"</span>: <span class="n" id="cpu">0</span>, <span class="k">"mem"</span>: <span class="n" id="mem">0</span>,
+  <span class="k">"net"</span>: <span class="s" id="net-rate">"…"</span>,
+  <span class="k">"pipeline"</span>: <span class="s" id="pipeline">"nominal"</span>
+<span class="p">}</span></pre>
+      </div>
+    </div>
+
+    <script type="module">
+      import zebar, { setText, formatRate, formatUptime, typewriter } from './zebar-client.js';
+      import { startNetwork } from './net-canvas.js';
+
+      // ---- personal settings ----
+      const WORDS = ['futur SOC analyst', 'data engineer en devenir', 'logs → pipelines → détections', 'blue team · linux · réseaux'];
+      const FPS_PLUGGED = 20;    // frame rate of the desktop network animation
+      const FPS_BATTERY = 10;
+
+      const $ = id => document.getElementById(id);
+      const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+      const network = startNetwork($('net'), {
+        maxNodes: 90, nodeColor: '#7d8898', packetColor: css('--cyan'), hoverColor: css('--accent'), fps: FPS_PLUGGED,
+      });
+
+      const typed = $('typed');
+      typed.textContent = WORDS[0];
+      typewriter(typed, WORDS);
+
+      const providers = zebar.createProviderGroup({
+        glazewm: { type: 'glazewm' },
+        host: { type: 'host', refreshInterval: 60000 },
+        cpu: { type: 'cpu', refreshInterval: 5000 },
+        memory: { type: 'memory', refreshInterval: 5000 },
+        network: { type: 'network', refreshInterval: 5000 },
+        battery: { type: 'battery', refreshInterval: 30000 },
+      });
+
+      function render() {
+        const out = providers.outputMap;
+        if (out.host) {
+          setText($('host'), '"' + (out.host.hostname ?? '?') + '"');
+          setText($('uptime'), '"' + formatUptime(out.host.uptime) + '"');
+        }
+        const cpu = Math.round(out.cpu?.usage ?? 0);
+        const mem = Math.round(out.memory?.usage ?? 0);
+        setText($('cpu'), String(cpu));
+        setText($('mem'), String(mem));
+        if (out.network) {
+          const t = out.network.traffic;
+          setText($('net-rate'), '"↓ ' + formatRate(t?.received?.bytes) + '/s  ↑ ' + formatRate(t?.transmitted?.bytes) + '/s"');
+        }
+        const level = cpu > 90 || mem > 90 ? 'crit' : cpu > 80 || mem > 85 ? 'warn' : '';
+        setText($('pipeline'), level === 'crit' ? '"saturated"' : level === 'warn' ? '"degraded"' : '"nominal"');
+        $('pipeline').className = 's ' + level;
+        $('pulse').className = 'pulse ' + level;
+
+        // Nothing to see behind a fullscreen window: stop drawing. On battery: lower frame rate.
+        const f = out.glazewm?.focusedContainer;
+        network.setPaused(f?.type === 'window' && f.state?.type === 'fullscreen');
+        const b = out.battery;
+        network.setFps(!b || b.isCharging || b.state === 'full' ? FPS_PLUGGED : FPS_BATTERY);
+      }
+      render();
+      providers.onOutput(render);
+      requestAnimationFrame(() => document.body.classList.add('ready'));
+    </script>
+  </body>
+</html>

@@ -37,9 +37,13 @@ window_effects:
     corner_style:
       enabled: false
       style: 'square'
+    # "Glass": native Windows layered-window opacity (no injection, no DWM patching). The wallpaper and the
+    # animated HUD show through. alt+shift+o makes the focused window opaque until it is focused again
+    # (GlazeWM re-applies these values on every focus change); alt+shift+g puts the glass back at once.
+    # To turn the effect off for good: enabled: false on both blocks, then alt+shift+r.
     transparency:
-      enabled: false
-      opacity: '95%'
+      enabled: true
+      opacity: '93%'
   other_windows:
     border:
       enabled: true
@@ -50,8 +54,8 @@ window_effects:
       enabled: false
       style: 'square'
     transparency:
-      enabled: false
-      opacity: '0%'
+      enabled: true
+      opacity: '86%'
 
 window_behavior:
   initial_state: 'tiling'
@@ -178,6 +182,12 @@ keybindings:
     bindings: ['alt+shift+r']
   - commands: ['wm-redraw']
     bindings: ['alt+shift+w']
+
+  # Glass effect of the focused window: opaque for a video or an image (lasts until the window is focused again)
+  - commands: ['set-transparency --opacity 100%']
+    bindings: ['alt+shift+o']
+  - commands: ['set-transparency --opacity 93%']
+    bindings: ['alt+shift+g']
 
   # Launch Windows Terminal
   - commands: ['shell-exec wt']
