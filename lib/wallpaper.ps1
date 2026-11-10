@@ -14,7 +14,9 @@ public class GeekDpi { [DllImport("user32.dll")] public static extern bool SetPr
 }
 
 function New-GeekWallpaper {
-    param([string]$Path, [string]$AccentHex = '00ff9c', [int]$W = 0, [int]$H = 0)
+    # -Network draws a still frame of the animated network graph (for surfaces that cannot be animated, like the
+    # lock screen); -Prompt adds two terminal lines in the lower right corner.
+    param([string]$Path, [string]$AccentHex = '00ff9c', [int]$W = 0, [int]$H = 0, [switch]$Network, [string]$Prompt = '')
     Add-Type -AssemblyName System.Drawing
     if ($W -le 0 -or $H -le 0) { $sz = Get-PrimaryScreenSize; $W = $sz.W; $H = $sz.H }
     $u = [double]$H / 1600.0    # all sizes below are scaled from a 1600px-high reference
@@ -50,6 +52,41 @@ function New-GeekWallpaper {
     $i = 0
     for ($y = 0; $y -le $H; $y += $step) { $p = $minor; if ($i % 5 -eq 0) { $p = $major }; $gfx.DrawLine($p, 0, $y, $W, $y); $i++ }
 
+    # network graph: same rules as config\zebar\net-canvas.js (links under a distance, a few packets on the links)
+    if ($Network) {
+        $rnd = New-Object System.Random 1337           # fixed seed: the picture is reproducible
+        $s = $u * 1.5                                  # the animation is tuned in CSS px (150 % scaling at 1600 px)
+        $count = [int][Math]::Min(110, ($W * $H) / (16000 * $s * $s) * 1.6)
+        $link = 150.0 * $s
+        $pts = @()
+        for ($n = 0; $n -lt $count; $n++) {
+            $pts += , @([double]($rnd.NextDouble() * $W), [double]($rnd.NextDouble() * $H), [double](($rnd.NextDouble() * 1.6 + 0.8) * $s))
+        }
+        $packet = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(230, 0, 229, 255))
+        for ($a = 0; $a -lt $count; $a++) {
+            for ($c = $a + 1; $c -lt $count; $c++) {
+                $dx = $pts[$a][0] - $pts[$c][0]; $dy = $pts[$a][1] - $pts[$c][1]
+                $d = [Math]::Sqrt($dx * $dx + $dy * $dy)
+                if ($d -ge $link) { continue }
+                $alpha = [int]((1 - $d / $link) * 150)
+                $pen = New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb($alpha, 125, 136, 152)), ([single][Math]::Max(1, 0.9 * $s))
+                $gfx.DrawLine($pen, [single]$pts[$a][0], [single]$pts[$a][1], [single]$pts[$c][0], [single]$pts[$c][1])
+                $pen.Dispose()
+                if ($rnd.NextDouble() -lt 0.12) {
+                    $t = $rnd.NextDouble(); $pr = 2.2 * $s
+                    $gfx.FillEllipse($packet, [single]($pts[$a][0] - $dx * $t - $pr), [single]($pts[$a][1] - $dy * $t - $pr), [single](2 * $pr), [single](2 * $pr))
+                }
+            }
+        }
+        $node = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(190, 125, 136, 152))
+        $hot = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, $r, $g, $b))
+        for ($n = 0; $n -lt $count; $n++) {
+            $br = $node; $rad = $pts[$n][2]
+            if ($n % 17 -eq 0) { $br = $hot; $rad += $s }
+            $gfx.FillEllipse($br, [single]($pts[$n][0] - $rad), [single]($pts[$n][1] - $rad), [single](2 * $rad), [single](2 * $rad))
+        }
+    }
+
     # amber HUD corners (kept well inside the edges)
     $amber = New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb(170, 255, 176, 0)), ([single][Math]::Max(2, 3 * $u))
     $m = [int](70 * $u); $l = [int](90 * $u)
@@ -64,6 +101,21 @@ function New-GeekWallpaper {
         $tb = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(110, $r, $g, $b))
         $gfx.DrawString('SOC // ONLINE   data-pipeline: nominal', $font, $tb, $m + 16, $H - $m - [int](48 * $u))
     } catch { }
+
+    # terminal prompt, lower right (right-aligned inside the HUD corner)
+    if ($Prompt) {
+        try {
+            $face = 'Cascadia Mono'
+            if ((New-Object System.Drawing.Text.InstalledFontCollection).Families.Name -contains 'JetBrainsMono NF') { $face = 'JetBrainsMono NF' }
+            $pf = New-Object System.Drawing.Font $face, ([single](17 * $u))
+            $right = New-Object System.Drawing.StringFormat; $right.Alignment = 'Far'
+            $acc = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(210, $r, $g, $b))
+            $txt = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(200, 197, 209, 222))
+            $x = [single]($W - $m - 16); $lh = [single](34 * $u)
+            $gfx.DrawString('$ whoami', $pf, $acc, $x, [single]($H - $m - 84 * $u - $lh), $right)
+            $gfx.DrawString("> $Prompt", $pf, $txt, $x, [single]($H - $m - 84 * $u), $right)
+        } catch { }
+    }
 
     New-Item -ItemType Directory -Force -Path (Split-Path $Path) | Out-Null
     $bmp.Save($Path, [System.Drawing.Imaging.ImageFormat]::Png)

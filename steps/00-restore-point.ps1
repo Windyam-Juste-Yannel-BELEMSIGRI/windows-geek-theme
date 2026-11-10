@@ -14,7 +14,8 @@ $keys = @(
     'HKCU\Control Panel\Desktop',
     'HKLM\SOFTWARE\Policies\Microsoft\Windows\Personalization',
     'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System',
-    'HKLM\SOFTWARE\Policies\Microsoft\Dsh'
+    'HKLM\SOFTWARE\Policies\Microsoft\Dsh',
+    'HKLM\SOFTWARE\Policies\Microsoft\Windows\System'
 )
 if (Test-DryRun) {
     $keys | ForEach-Object { Write-Info "[dry-run] reg export $_" }

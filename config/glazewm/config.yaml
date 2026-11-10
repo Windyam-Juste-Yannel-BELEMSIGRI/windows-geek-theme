@@ -200,6 +200,12 @@ keybindings:
     bindings: ['alt+a']
   - commands: ['focus --recent-workspace']
     bindings: ['alt+z']
+  # Next / previous workspace in order, empty ones included. These two are also what the touchpad four-finger
+  # swipe sends (Settings > Touchpad > Advanced gestures > custom shortcut), see README.
+  - commands: ['focus --next-workspace']
+    bindings: ['ctrl+alt+right']
+  - commands: ['focus --prev-workspace']
+    bindings: ['ctrl+alt+left']
 
   # App launcher / search (wofi-like). Script: ~/.config/geek-launcher/launcher.ps1
   - commands: ['shell-exec wt.exe new-tab --title geek-launcher --suppressApplicationTitle -p "SOC // PowerShell 7" pwsh.exe -NoLogo -NoProfile -File "%USERPROFILE%\.config\geek-launcher\launcher.ps1"']

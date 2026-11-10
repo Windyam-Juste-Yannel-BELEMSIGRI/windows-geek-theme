@@ -93,12 +93,20 @@ Problèmes rencontrés :
 4. Le script `boot-priority.ps1` (baisse de priorité des apps lourdes pendant 180 s) est retiré : il démarrait lui aussi par la clé `Run`, donc après les applications qu'il devait ralentir. Les priorités de lancement restent posées par `set-geek-admin-priority.ps1`.
 5. Lancer GlazeWM une seconde fois affiche une boîte « Fatal error » : il ne faut donc qu'un seul mécanisme de démarrage (la tâche), pas de doublon dans la clé `Run`.
 
+## 5g. Suite du 2026-11-10 : verrouillage, geste, vérification des applications
+
+- **Écran de verrouillage / connexion** : image régénérée avec une image fixe du graphe réseau et un prompt `$ whoami` ; flou de l'écran de connexion retiré par stratégie. Image posée et stratégie écrite, **rendu à vérifier avec `Win+L`**.
+- **Balayage à quatre doigts** : il pilotait les bureaux virtuels Windows, pas les workspaces GlazeWM. Raccourcis `ctrl+alt+droite/gauche` ajoutés (testés : 1 → 2 → 1) ; l'association au geste se fait dans les Paramètres (voir README), Windows ne documentant aucune valeur de registre pour les raccourcis personnalisés.
+- **Logo de la barre** : `~/windyam yannel`.
+- **Ouverture des applications** : Bloc-notes, Explorateur, Calculatrice, Paramètres, Paint, Terminal, VS Code et Gestionnaire des tâches (élevé) ouverts sur un workspace vide. Les 8 sont gérées en `tiling`, dans les marges, sous la barre, avec l'opacité 93 %. Le lanceur s'ouvre flottant et centré (900x520).
+
 ## 6. Ce qu'il te reste à faire
 
 1. **Se déconnecter/reconnecter** : couleur d'accent et alignement de la barre des tâches.
 2. **Écran de verrouillage** : `Win+L` pour vérifier l'image ; sur l'écran de connexion, seule l'image est personnalisable (limite assumée).
 3. **Widgets natifs** (optionnel) : à désactiver à la main dans Paramètres > Personnalisation > Barre des tâches.
-4. **Redémarrer une fois** pour constater le nouveau temps de lancement. Si la barre n'apparaît pas : lancer GlazeWM depuis le menu Démarrer, puis regarder l'historique de la tâche `\windows-geek-theme\GlazeWM` dans le Planificateur de tâches.
+4. **Associer le balayage à quatre doigts** aux raccourcis `ctrl+alt+droite/gauche` dans les Paramètres (README, « Balayage à quatre doigts »).
+5. **Redémarrer une fois** pour constater le nouveau temps de lancement. Si la barre n'apparaît pas : lancer GlazeWM depuis le menu Démarrer, puis regarder l'historique de la tâche `\windows-geek-theme\GlazeWM` dans le Planificateur de tâches.
 
 ## 7. Raccourcis GlazeWM à connaître
 
